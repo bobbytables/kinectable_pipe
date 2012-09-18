@@ -215,7 +215,8 @@ void writeSkeleton() {
 
 	s += "{\"skeletons\":[";
 
-	int skeletons=0;
+	int skeletons = 0;
+	int activeUsers = 0;
 
 	userGenerator.GetUsers(aUsers, nUsers);
 	for (int i = 0; i < nUsers; ++i) {
@@ -223,7 +224,9 @@ void writeSkeleton() {
 			continue;
 		}
 
-		if (i > 0)
+		activeUsers++;
+
+		if (activeUsers > 0)
 		{
 			s += ",";
 		}
