@@ -10,8 +10,6 @@
 
 #include <math.h>
 
-#include <png.hpp>
-
 using namespace std;
 
 bool saveRgbImage = false;
@@ -93,13 +91,20 @@ void XN_CALLBACK_TYPE new_user(xn::UserGenerator& generator, XnUserID nId, void*
 
 // Callback: An existing user was lost
 void XN_CALLBACK_TYPE lost_user(xn::UserGenerator& generator, XnUserID nId, void* pCookie) {
-	printf("{\"lost_user\":{\"userid\":%d}}\n", nId);
-	userGenerator.GetSkeletonCap().StopTracking(nId);
+	// printf("{\"lost_user\":{\"userid\":%d}}\n", nId);
+	// userGenerator.GetSkeletonCap().StopTracking(nId);
+	// userGenerator.GetSkeletonCap().Reset(nId);
 }
 
 void XN_CALLBACK_TYPE user_exit(xn::UserGenerator& generator, XnUserID nId, void *pCookie) {
 	printf("{\"user_exit\": {\"userid\": %d}}\n", nId);
 	userGenerator.GetSkeletonCap().StopTracking(nId);
+	userGenerator.GetSkeletonCap().Reset(nId);
+}
+
+void XN_CALLBACK_TYPE user_reenter(xn::UserGenerator& generator, XnUserID nId, void *pCookie) {
+	printf("{\"user_reenter\": {\"userid\": %d}}\n", nId);
+	userGenerator.GetSkeletonCap().StartTracking(nId);
 }
 
 // Callback: Detected a pose
@@ -341,8 +346,6 @@ int usage(char *name) {
 	exit(1);
 }
 
-
-
 void checkRetVal(XnStatus nRetVal) {
 	if (nRetVal != XN_STATUS_OK) {
 		printf("There was a problem initializing kinect... Make sure you have \
@@ -357,79 +360,8 @@ void terminate(int ignored) {
 	exit(0);
 }
 
-void writeRGB() {
-	png::image< png::rgb_pixel > output_image(imageMD.FullXRes(), imageMD.FullYRes());
-
-	const XnRGB24Pixel* pImageRow = imageMD.RGB24Data();
-  // XnRGB24Pixel* pTexRow = g_pTexMap + g_imageMD.YOffset() * g_nTexMapX;
-
-  for (XnUInt y = 0; y < imageMD.YRes(); ++y)
-  {
-    const XnRGB24Pixel* pImage = pImageRow;
-    // XnRGB24Pixel* pTex = pTexRow + g_imageMD.XOffset();
-    for (XnUInt x = 0; x < imageMD.XRes(); ++x, ++pImage) // , ++pTex
-    {
-			output_image[y][x] = png::rgb_pixel(pImage->nRed, pImage->nGreen, pImage->nBlue);
-      // *pTex = *pImage;
-    }
-    pImageRow += imageMD.XRes();
-    // pTexRow += g_nTexMapX;
-  }
-	output_image.write("rgb.png");
-}
-
 // code adapted from https://groups.google.com/group/openni-dev/tree/browse_frm/month/2011-03/c40f876672bb714c?rnum=11&lnk=nl
 #define MAX_DEPTH 10000
-
-void writeDepth() {
-	const XnDepthPixel* pDepth = depthMD.Data();
-	float pDepthHist[MAX_DEPTH];
-	// Calculate the accumulative histogram (the yellow display...)
-  xnOSMemSet(pDepthHist, 0, MAX_DEPTH*sizeof(float));
-  unsigned int nNumberOfPoints = 0;
-  for (XnUInt y = 0; y < depthMD.YRes(); ++y)
-  {
-    for (XnUInt x = 0; x < depthMD.XRes(); ++x, ++pDepth)
-    {
-      if (*pDepth != 0)
-      {
-        pDepthHist[*pDepth]++;
-        nNumberOfPoints++;
-      }
-    }
-  }
-  for (int nIndex=1; nIndex<MAX_DEPTH; nIndex++)
-  {
-    pDepthHist[nIndex] += pDepthHist[nIndex-1];
-  }
-  if (nNumberOfPoints)
-  {
-    for (int nIndex=1; nIndex<MAX_DEPTH; nIndex++)
-    {
-      pDepthHist[nIndex] = (unsigned int)(65536 * (1.0f - (pDepthHist[nIndex] / nNumberOfPoints)));
-    }
-  }
-
-	png::image< png::gray_pixel_16 > output_image(depthMD.FullXRes(), depthMD.FullYRes());
-
-	const XnDepthPixel* pDepthRow = depthMD.Data();
-  for (XnUInt y = 0; y < depthMD.YRes(); ++y)
-  {
-    const XnDepthPixel* pDepth = pDepthRow;
-    for (XnUInt x = 0; x < depthMD.XRes(); ++x, ++pDepth) //, ++pTex
-    {
-      if (*pDepth != 0)
-      {
-        int nHistValue = pDepthHist[*pDepth];
-//				output_image[y][x] = png::gray_pixel_16(nHistValue);
-				output_image[y][x] = png::gray_pixel_16(*pDepth);
-      }
-    }
-    pDepthRow += depthMD.XRes();
-  }
-
-	output_image.write("depth.png");
-}
 
 void main_loop() {
 	// Read next available data
@@ -441,27 +373,8 @@ void main_loop() {
 	image.SetPixelFormat(XN_PIXEL_FORMAT_RGB24);
 	image.GetMetaData(imageMD);
 
-	// Process the data
-	// FIXME: This needs to be converted to ticks
-	// maybe use gettimeofday?
-	double next = clockAsFloat(last) + 1.0 / FRAMERATE;
+	writeSkeleton();
 
-	std::clock_t now = std::clock();
-	if (next < clockAsFloat(now)) {
-		last = now;
-		if (saveRgbImage || saveDepthImage) {
-			printf("{\"status\":\"writing images\", \"elapsed\":%0.3f}\n", clockAsFloat(last));
-			fflush(stdout);
-			if (saveRgbImage) {
-				writeRGB();
-			}
-			if (saveDepthImage) {
-				writeDepth();
-			}
-			printf("{\"status\":\"images saved\", \"elapsed\":%0.3f}\n", clockAsFloat(last));
-		}
-		writeSkeleton();
-	}
 	fflush(stdout);
 }
 
@@ -471,7 +384,6 @@ int main(int argc, char **argv) {
 	printf("{\"status\":\"initializing\", \"elapsed\":%0.3f}\n", clockAsFloat(last));
 	fflush(stdout);
 
-
 	unsigned int arg = 1,
 		require_argument = 0,
 		port_argument = 0;
@@ -479,47 +391,6 @@ int main(int argc, char **argv) {
 	XnStatus nRetVal = XN_STATUS_OK;
 	XnCallbackHandle hUserCallbacks, hCalibrationCallbacks, hPoseCallbacks, hHandsCallbacks;
 	xn::Recorder recorder;
-
-	while ((arg < argc) && (argv[arg][0] == '-')) {
-		switch (argv[arg][1]) {
-			case 'r':
-			require_argument = 1;
-			break;
-			default:
-			require_argument = 0;
-			break;
-		}
-
-		if ( require_argument && arg+1 >= argc ) {
-			printf("The option %s require an argument.\n", argv[arg]);
-			usage(argv[0]);
-		}
-
-		switch (argv[arg][1]) {
-			case 'h':
-				usage(argv[0]);
-				break;
-			case 'i':
-				saveRgbImage = true;
-				break;
-			case 'd':
-				saveDepthImage = true;
-				break;
-			case 'r': //Set framerate
-				if(sscanf(argv[arg+1], "%lf", &FRAMERATE) == EOF ) {
-					printf("Bad framerate given.\n");
-					usage(argv[0]);
-				}
-				break;
-			default:
-				printf("Unrecognized option.\n");
-				usage(argv[0]);
-		}
-		if ( require_argument )
-			arg += 2;
-		else
-			arg ++;
-	}
 
 	context.Init();
 
@@ -532,6 +403,8 @@ int main(int argc, char **argv) {
 
 	checkRetVal(userGenerator.RegisterUserCallbacks(new_user, lost_user, NULL, hUserCallbacks));
 	checkRetVal(userGenerator.RegisterToUserExit(user_exit, NULL, hUserCallbacks));
+	checkRetVal(userGenerator.RegisterToUserReEnter(user_reenter, NULL, hUserCallbacks));
+
 	checkRetVal(userGenerator.GetSkeletonCap().RegisterCalibrationCallbacks(calibration_started, calibration_ended, NULL, hCalibrationCallbacks));
 	checkRetVal(userGenerator.GetPoseDetectionCap().RegisterToPoseCallbacks(pose_detected, NULL, NULL, hPoseCallbacks));
 	checkRetVal(userGenerator.GetSkeletonCap().GetCalibrationPose(g_strPose));
