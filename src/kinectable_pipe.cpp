@@ -4,6 +4,7 @@
 #include <csignal>
 
 #include <XnCppWrapper.h>
+#include <XnUSB.h>
 
 #include <iostream>
 #include <string>
@@ -12,8 +13,221 @@
 
 using namespace std;
 
-bool saveRgbImage = false;
-bool saveDepthImage = false;
+class KinectMotors
+{
+public:
+    enum { MaxDevs = 16 };
+  enum LED_STATUS {
+    LED_OFF = 0,
+    LED_GREEN,
+    LED_RED,
+    LED_ORANGE,
+    LED_BLINK_ORANGE,
+    LED_BLINK_GREEN,
+    LED_BLINK_RED_ORANGE
+  };
+  enum STATUS {
+    STOPED = 0,
+    AT_LIMIT,
+    MOVING = 4,
+    QUICK_BREAK = 8,
+    UNKNOW = -1
+  };
+
+  class Device
+  {
+  private:
+    XN_USB_DEV_HANDLE handle;
+    bool m_isOpen;
+
+    Device(const Device& d);
+    Device& operator =(const Device& d);
+
+  public:
+    Device() : handle(NULL), m_isOpen(false) {}
+    Device(XN_USB_DEV_HANDLE h) : handle(h), m_isOpen(false) {}
+    virtual ~Device() { if (m_isOpen) Close(); }
+
+    void SetHandle(XN_USB_DEV_HANDLE h) { handle = h; }
+
+    /**
+     * Open device.
+     * @return true if succeeded, false - overwise
+     */
+    bool Open();
+
+    /**
+     * Close device.
+     */
+    void Close();
+
+    /**
+     * Move motor up or down to specified angle value.
+     * @param angle angle value
+     * @return true if succeeded, false - overwise
+     */
+    bool Move(int angle);
+
+    /**
+     * Set Led Status
+     * @param status status code
+     * @return true if succeeded, false - overwise
+     */
+    bool SetLed(int status);
+
+    /**
+     * Get current status (status code, speed, angle)
+     * @param status motor status code
+     * @param speed current speed if in moving
+     * @param angle current angle value
+     * @return true if succeeded, false - overwise
+     */
+    bool GetStatus(int& status, int& speed, int& angle);
+  };
+
+    KinectMotors();
+    virtual ~KinectMotors();
+
+  bool Initialize();
+  size_t Count() { return m_num; }
+  Device& operator [](const int idx) {
+    return m_devs[idx];
+  }
+
+private:
+  Device m_devs[MaxDevs];
+    XnUInt32 m_num;
+};
+
+KinectMotors::KinectMotors() : m_num(0)
+{
+}
+
+KinectMotors::~KinectMotors()
+{
+}
+
+bool KinectMotors::Initialize()
+{
+    const XnUSBConnectionString *paths;
+    XnUInt32 count;
+    XnStatus res;
+
+    // Init OpenNI USB
+    res = xnUSBInit();
+    if (res != XN_STATUS_OK)
+    {
+        xnPrintError(res, "xnUSBInit failed");
+        return false;
+    }
+
+    // Open all "Kinect motor" USB devices
+    res = xnUSBEnumerateDevices(0x045E /* VendorID */, 0x02B0 /*ProductID*/, &paths, &count);
+    if (res != XN_STATUS_OK)
+    {
+        xnPrintError(res, "xnUSBEnumerateDevices failed");
+        return false;
+    }
+
+    // Open devices
+  XN_USB_DEV_HANDLE h;
+    for (XnUInt32 index = 0; index < count; ++index)
+    {
+        res = xnUSBOpenDeviceByPath(paths[index], &h);
+        if (res != XN_STATUS_OK) {
+            xnPrintError(res, "xnUSBOpenDeviceByPath failed");
+            return false;
+        }
+    m_devs[index].SetHandle(h);
+    }
+
+  m_num = count;
+  return true;
+}
+
+bool KinectMotors::Device::Open()
+{
+  if (handle == NULL) return false;
+
+    XnStatus res;
+    XnUChar buf[1]; // output buffer
+
+    // Init motors
+  res = xnUSBSendControl(handle, (XnUSBControlType) 0xc0, 0x10, 0x00, 0x00, buf, sizeof(buf), 0);
+  if (res != XN_STATUS_OK) {
+    xnPrintError(res, "xnUSBSendControl failed");
+    Close();
+    return false;
+  }
+
+  res = xnUSBSendControl(handle, XN_USB_CONTROL_TYPE_VENDOR, 0x06, 0x01, 0x00, NULL, 0, 0);
+  if (res != XN_STATUS_OK) {
+    xnPrintError(res, "xnUSBSendControl failed");
+    Close();
+    return false;
+  }
+
+    m_isOpen = true;
+
+    return true;
+}
+
+void KinectMotors::Device::Close()
+{
+    if (m_isOpen) {
+    xnUSBCloseDevice(handle);
+    m_isOpen = false;
+    }
+}
+
+bool KinectMotors::Device::Move(int angle)
+{
+    XnStatus res;
+
+    // Send move control requests
+  res = xnUSBSendControl(handle, XN_USB_CONTROL_TYPE_VENDOR, 0x31, 2*angle, 0x00, NULL, 0, 0);
+
+  if (res != XN_STATUS_OK)
+  {
+    xnPrintError(res, "xnUSBSendControl failed");
+    return false;
+  }
+    return true;
+}
+
+bool KinectMotors::Device::SetLed(int status)
+{
+    XnStatus res;
+  res = xnUSBSendControl(handle, XN_USB_CONTROL_TYPE_VENDOR, 0x06, status, 0x00, NULL, 0, 0);
+
+  if (res != XN_STATUS_OK)
+  {
+    xnPrintError(res, "xnUSBSendControl failed");
+    return false;
+  }
+    return true;
+}
+
+bool KinectMotors::Device::GetStatus(int& status, int& speed, int& angle)
+{
+    XnStatus res;
+  XnUChar buf[10] = {0};
+  XnUInt32 size = 0;
+
+  res = xnUSBReceiveControl(handle, XN_USB_CONTROL_TYPE_VENDOR, 0x32, 0, 0, buf, 10, &size, 0);
+
+  if (res != XN_STATUS_OK)
+  {
+    xnPrintError(res, "xnUSBSendControl failed");
+    return false;
+  }
+
+  status = static_cast<int>(buf[9]);
+  speed = static_cast<int>(buf[1]);
+  angle = static_cast<int>(static_cast<char>(buf[8]))/2;
+
+    return true;
+}
 
 
 int userID;
@@ -42,6 +256,8 @@ xn::UserGenerator userGenerator;
 xn::HandsGenerator handsGenerator;
 xn::GestureGenerator gestureGenerator;
 xn::AudioGenerator audioGenerator;
+
+KinectMotors motors;
 
 XnChar g_strPose[20] = "";
 #define GESTURE_TO_USE "Wave"
@@ -120,6 +336,11 @@ void XN_CALLBACK_TYPE pose_detected(xn::PoseDetectionCapability& capability, con
 void XN_CALLBACK_TYPE calibration_started(xn::SkeletonCapability& capability, XnUserID nId, void* pCookie) {
 	last = std::clock();
 	printf("{\"calibration_started\":{\"userid\":%d}, \"elapsed\":%.3f}\n", nId, clockAsFloat(last));
+
+	if (motors.Count() > 0) {
+		KinectMotors::Device& dev = motors[0];
+		dev.SetLed(KinectMotors::LED_RED);
+	}
 }
 
 
@@ -133,6 +354,11 @@ void XN_CALLBACK_TYPE calibration_ended(xn::SkeletonCapability& capability, XnUs
 	else {
 		printf("{\"calibration_failed\":{\"userid\":%d}, \"elapsed\":%.3f}\n", nId, clockAsFloat(last));
 		userGenerator.GetSkeletonCap().RequestCalibration(nId, TRUE);
+	}
+
+	if (motors.Count() > 0) {
+		KinectMotors::Device& dev = motors[0];
+		dev.SetLed(KinectMotors::LED_GREEN);
 	}
 }
 
@@ -390,6 +616,7 @@ int main(int argc, char **argv) {
 	xn::Recorder recorder;
 
 	context.Init();
+	motors.Initialize();
 
 	checkRetVal(depth.Create(context));
 	checkRetVal(image.Create(context));
