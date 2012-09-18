@@ -36,12 +36,14 @@ xn::Context context;
 
 xn::DepthGenerator depth;
 xn::DepthMetaData depthMD;
-xn::ImageGenerator image;
 xn::ImageMetaData imageMD;
+xn::AudioMetaData audioMD;
 
+xn::ImageGenerator image;
 xn::UserGenerator userGenerator;
 xn::HandsGenerator handsGenerator;
 xn::GestureGenerator gestureGenerator;
+xn::AudioGenerator audioGenerator;
 
 XnChar g_strPose[20] = "";
 #define GESTURE_TO_USE "Wave"
@@ -91,10 +93,14 @@ void XN_CALLBACK_TYPE new_user(xn::UserGenerator& generator, XnUserID nId, void*
 
 // Callback: An existing user was lost
 void XN_CALLBACK_TYPE lost_user(xn::UserGenerator& generator, XnUserID nId, void* pCookie) {
-//	printf("{'lost_user\":{\"userid\":%d}}\n", nId);
+	printf("{\"lost_user\":{\"userid\":%d}}\n", nId);
+	userGenerator.GetSkeletonCap().StopTracking(nId);
 }
 
-
+void XN_CALLBACK_TYPE user_exit(xn::UserGenerator& generator, XnUserID nId, void *pCookie) {
+	printf("{\"user_exit\": {\"userid\": %d}}\n", nId);
+	userGenerator.GetSkeletonCap().StopTracking(nId);
+}
 
 // Callback: Detected a pose
 void XN_CALLBACK_TYPE pose_detected(xn::PoseDetectionCapability& capability, const XnChar* strPose, XnUserID nId, void* pCookie) {
@@ -208,6 +214,10 @@ void writeSkeleton() {
 
 	userGenerator.GetUsers(aUsers, nUsers);
 	for (int i = 0; i < nUsers; ++i) {
+		if (!userGenerator.GetSkeletonCap().IsTracking(aUsers[i])) {
+			continue;
+		}
+
 		if (i > 0)
 		{
 			s += ",";
@@ -461,12 +471,13 @@ int main(int argc, char **argv) {
 	printf("{\"status\":\"initializing\", \"elapsed\":%0.3f}\n", clockAsFloat(last));
 	fflush(stdout);
 
+
 	unsigned int arg = 1,
 		require_argument = 0,
 		port_argument = 0;
 	XnMapOutputMode mapMode;
 	XnStatus nRetVal = XN_STATUS_OK;
-	XnCallbackHandle hUserCallbacks, hCalibrationCallbacks, hPoseCallbacks, hHandsCallbacks, hGestureCallbacks;
+	XnCallbackHandle hUserCallbacks, hCalibrationCallbacks, hPoseCallbacks, hHandsCallbacks;
 	xn::Recorder recorder;
 
 	while ((arg < argc) && (argv[arg][0] == '-')) {
@@ -520,13 +531,12 @@ int main(int argc, char **argv) {
 		nRetVal = userGenerator.Create(context);
 
 	checkRetVal(userGenerator.RegisterUserCallbacks(new_user, lost_user, NULL, hUserCallbacks));
+	checkRetVal(userGenerator.RegisterToUserExit(user_exit, NULL, hUserCallbacks));
 	checkRetVal(userGenerator.GetSkeletonCap().RegisterCalibrationCallbacks(calibration_started, calibration_ended, NULL, hCalibrationCallbacks));
 	checkRetVal(userGenerator.GetPoseDetectionCap().RegisterToPoseCallbacks(pose_detected, NULL, NULL, hPoseCallbacks));
 	checkRetVal(userGenerator.GetSkeletonCap().GetCalibrationPose(g_strPose));
 	checkRetVal(userGenerator.GetSkeletonCap().SetSkeletonProfile(XN_SKEL_PROFILE_ALL));
 	userGenerator.GetSkeletonCap().SetSmoothing(0.8);
-
-	// xnSetMirror(depth, !mirrorMode);
 
 	signal(SIGTERM, terminate);
 	signal(SIGINT, terminate);
@@ -540,4 +550,3 @@ int main(int argc, char **argv) {
 
 	terminate(0);
 }
-
