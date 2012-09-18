@@ -219,17 +219,11 @@ void writeSkeleton() {
 	int activeUsers = 0;
 
 	userGenerator.GetUsers(aUsers, nUsers);
-	for (int i = 0; i < nUsers; ++i) {
-		if (!userGenerator.GetSkeletonCap().IsTracking(aUsers[i])) {
-			continue;
-		}
-
-		activeUsers++;
-
-		if (activeUsers > 0)
-		{
+	for (int i = 0; i < userGenerator.GetNumberOfUsers(); ++i) {
+		if(i > 0){
 			s += ",";
 		}
+
 		char tmp[1024];
 		sprintf(tmp, "{\"userid\":%d,\"joints\":[", i);
 		s += tmp;
