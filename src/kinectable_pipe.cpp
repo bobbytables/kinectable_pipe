@@ -443,95 +443,141 @@ void writeSkeleton() {
 
 	int skeletons = 0;
 	int activeUsers = 0;
+  int totalJoints;
+  string userSkeleton;
+  string activeSkeletons[nUsers];
 
-	userGenerator.GetUsers(aUsers, nUsers);
-	for (int i = 0; i < nUsers; ++i) {
-		if(i > 0){
-			s += ",";
-		}
+  userGenerator.GetUsers(aUsers, nUsers);
+  for (int i = 0; i < nUsers; ++i) {
+    totalJoints = 0;
+    userSkeleton = "";
 
     char tmp[1024];
     sprintf(tmp, "{\"userid\":%d,\"joints\":[", aUsers[i]);
-    s += tmp;
+    userSkeleton += tmp;
 
     if (userGenerator.GetSkeletonCap().IsTracking(aUsers[i])) {
-      skeletons++;
 			if (jointPos(aUsers[i], XN_SKEL_HEAD) == 0) {
-				writeJoint(&s, "head", jointCoords);
+        writeJoint(&userSkeleton, "head", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_NECK) == 0) {
-				writeJoint(&s, "neck", jointCoords);
+				writeJoint(&userSkeleton, "neck", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_LEFT_COLLAR) == 0) {
-				writeJoint(&s, "l_collar", jointCoords);
+				writeJoint(&userSkeleton, "l_collar", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_LEFT_SHOULDER) == 0) {
-				writeJoint(&s, "l_shoulder", jointCoords);
+				writeJoint(&userSkeleton, "l_shoulder", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_LEFT_ELBOW) == 0) {
-				writeJoint(&s, "l_elbow", jointCoords);
+				writeJoint(&userSkeleton, "l_elbow", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_LEFT_WRIST) == 0) {
-				writeJoint(&s, "l_wrist", jointCoords);
+				writeJoint(&userSkeleton, "l_wrist", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_LEFT_HAND) == 0) {
-				writeJoint(&s, "l_hand", jointCoords);
+				writeJoint(&userSkeleton, "l_hand", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_LEFT_FINGERTIP) == 0) {
-				writeJoint(&s, "l_fingertop", jointCoords);
+				writeJoint(&userSkeleton, "l_fingertop", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_RIGHT_COLLAR) == 0) {
-				writeJoint(&s, "r_collar", jointCoords);
+				writeJoint(&userSkeleton, "r_collar", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_RIGHT_SHOULDER) == 0) {
-				writeJoint(&s, "r_shoulder", jointCoords);
+				writeJoint(&userSkeleton, "r_shoulder", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_RIGHT_ELBOW) == 0) {
-				writeJoint(&s, "r_elbow", jointCoords);
+				writeJoint(&userSkeleton, "r_elbow", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_RIGHT_WRIST) == 0) {
-				writeJoint(&s, "r_wrist", jointCoords);
+				writeJoint(&userSkeleton, "r_wrist", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_RIGHT_HAND) == 0) {
-				writeJoint(&s, "r_hand", jointCoords);
+				writeJoint(&userSkeleton, "r_hand", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_RIGHT_FINGERTIP) == 0) {
-				writeJoint(&s, "r_fingertip", jointCoords);
+				writeJoint(&userSkeleton, "r_fingertip", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_TORSO) == 0) {
-				writeJoint(&s, "torso", jointCoords);
+				writeJoint(&userSkeleton, "torso", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_WAIST) == 0) {
-				writeJoint(&s, "waist", jointCoords);
+				writeJoint(&userSkeleton, "waist", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_LEFT_HIP) == 0) {
-				writeJoint(&s, "l_hip", jointCoords);
+				writeJoint(&userSkeleton, "l_hip", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_LEFT_KNEE) == 0) {
-				writeJoint(&s, "l_knee", jointCoords);
+				writeJoint(&userSkeleton, "l_knee", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_LEFT_ANKLE) == 0) {
-				writeJoint(&s, "l_ankle", jointCoords);
+				writeJoint(&userSkeleton, "l_ankle", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_LEFT_FOOT) == 0) {
-				writeJoint(&s, "l_foot", jointCoords);
+				writeJoint(&userSkeleton, "l_foot", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_RIGHT_HIP) == 0) {
-				writeJoint(&s, "r_hip", jointCoords);
+				writeJoint(&userSkeleton, "r_hip", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_RIGHT_KNEE) == 0) {
-				writeJoint(&s, "r_knee", jointCoords);
+				writeJoint(&userSkeleton, "r_knee", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_RIGHT_ANKLE) == 0) {
-				writeJoint(&s, "r_ankle", jointCoords);
+				writeJoint(&userSkeleton, "r_ankle", jointCoords);
+        totalJoints++;
 			}
 			if (jointPos(aUsers[i], XN_SKEL_RIGHT_FOOT) == 0) {
-				writeJoint(&s, "r_foot", jointCoords);
+				writeJoint(&userSkeleton, "r_foot", jointCoords);
+        totalJoints++;
 			}
-			s.erase(s.length()-1, 1);
+
+      if(totalJoints > 0){
+        userSkeleton.erase(userSkeleton.length()-1, 1);
+      }
 		}
-		s += "]}";
+		userSkeleton += "]}";
+
+    if(totalJoints > 0){
+      activeSkeletons[i] = userSkeleton;
+      skeletons++;
+    }
 	}
+
+  string concatSkeletons;
+  for(int ai = 0; ai < skeletons; ++ai)
+  {
+    if(ai != 0){
+      concatSkeletons += ",";
+    }
+
+    concatSkeletons += activeSkeletons[ai];
+  }
+
+  s += concatSkeletons;
+
 	// add a timestamp
 	char tmp[1024];
 	sprintf(tmp, "],\"elapsed\":%.3f}", clockAsFloat(last));
