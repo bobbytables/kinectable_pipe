@@ -567,6 +567,7 @@ void writeSkeleton() {
 	}
 
   string concatSkeletons;
+  concatSkeletons = "";
   for(int ai = 0; ai < skeletons; ++ai)
   {
     if(ai != 0){
