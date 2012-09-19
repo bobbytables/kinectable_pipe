@@ -307,9 +307,9 @@ void XN_CALLBACK_TYPE new_user(xn::UserGenerator& generator, XnUserID nId, void*
 
 // Callback: An existing user was lost
 void XN_CALLBACK_TYPE lost_user(xn::UserGenerator& generator, XnUserID nId, void* pCookie) {
-	// printf("{\"lost_user\":{\"userid\":%d}}\n", nId);
-	// userGenerator.GetSkeletonCap().StopTracking(nId);
-	// userGenerator.GetSkeletonCap().Reset(nId);
+	printf("{\"lost_user\":{\"userid\":%d}}\n", nId);
+	userGenerator.GetSkeletonCap().StopTracking(nId);
+	userGenerator.GetSkeletonCap().Reset(nId);
 }
 
 void XN_CALLBACK_TYPE user_exit(xn::UserGenerator& generator, XnUserID nId, void *pCookie) {
@@ -445,16 +445,22 @@ void writeSkeleton() {
 	int activeUsers = 0;
 
 	userGenerator.GetUsers(aUsers, nUsers);
-	for (int i = 0; i < userGenerator.GetNumberOfUsers(); ++i) {
-		if(i > 0){
+	for (int i = 0; i < nUsers; ++i) {
+		if(skeletons > 0){
 			s += ",";
 		}
 
-		char tmp[1024];
-		sprintf(tmp, "{\"userid\":%d,\"joints\":[", i);
-		s += tmp;
+    XnBool tracking;
+    XnPoint3D com;
 
-		if (userGenerator.GetSkeletonCap().IsTracking(aUsers[i])) {
+    tracking = userGenerator.GetSkeletonCap().IsTracking(aUsers[i]);
+    userGenerator.GetCoM(aUsers[i], com);
+
+    char tmp[1024];
+    sprintf(tmp, "{\"userid\":%d,\"joints\":[", aUsers[i]);
+    s += tmp;
+
+    if (tracking && com.Z > 0) {
 			skeletons++;
 			if (jointPos(aUsers[i], XN_SKEL_HEAD) == 0) {
 				writeJoint(&s, "head", jointCoords);
@@ -617,6 +623,11 @@ int main(int argc, char **argv) {
 
 	context.Init();
 	motors.Initialize();
+
+  if (motors.Count() > 0) {
+    KinectMotors::Device& dev = motors[0];
+    dev.SetLed(KinectMotors::LED_ORANGE);
+  }
 
 	checkRetVal(depth.Create(context));
 	checkRetVal(image.Create(context));
