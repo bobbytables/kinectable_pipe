@@ -425,7 +425,7 @@ bool validJoint(float* jointCoords) {
 }
 
 void writeJoint(string *s, char* t, float* jointCoords) {
-	char tmp[1024];
+	char tmp[512];
 	if (validJoint(jointCoords))
 	{
 		sprintf(tmp, "{\"joint\":\"%s\",\"X\":%.3f,\"Y\":%.3f,\"Z\":%.3f},", t, jointCoords[0], jointCoords[1], jointCoords[2]);
