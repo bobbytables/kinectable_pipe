@@ -425,7 +425,7 @@ bool validJoint(float* jointCoords) {
 }
 
 void writeJoint(string *s, char* t, float* jointCoords) {
-	char tmp[512];
+	char tmp[1024];
 	if (validJoint(jointCoords))
 	{
 		sprintf(tmp, "{\"joint\":\"%s\",\"X\":%.3f,\"Y\":%.3f,\"Z\":%.3f},", t, jointCoords[0], jointCoords[1], jointCoords[2]);
@@ -446,22 +446,16 @@ void writeSkeleton() {
 
 	userGenerator.GetUsers(aUsers, nUsers);
 	for (int i = 0; i < nUsers; ++i) {
-		if(skeletons > 0){
+		if(i > 0){
 			s += ",";
 		}
-
-    XnBool tracking;
-    XnPoint3D com;
-
-    tracking = userGenerator.GetSkeletonCap().IsTracking(aUsers[i]);
-    userGenerator.GetCoM(aUsers[i], com);
 
     char tmp[1024];
     sprintf(tmp, "{\"userid\":%d,\"joints\":[", aUsers[i]);
     s += tmp;
 
-    if (tracking && com.Z > 0) {
-			skeletons++;
+    if (userGenerator.GetSkeletonCap().IsTracking(aUsers[i])) {
+      skeletons++;
 			if (jointPos(aUsers[i], XN_SKEL_HEAD) == 0) {
 				writeJoint(&s, "head", jointCoords);
 			}
@@ -535,10 +529,6 @@ void writeSkeleton() {
 				writeJoint(&s, "r_foot", jointCoords);
 			}
 			s.erase(s.length()-1, 1);
-		}
-		else {
-			//Send user's center of mass
-			writeUserPosition(&s, aUsers[i]);
 		}
 		s += "]}";
 	}
